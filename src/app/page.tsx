@@ -170,8 +170,10 @@ const d = data
                     <Cell key={i} fill={OUTCOME_COLORS[o.outcome] || '#94a3b8'} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(v, n) => [v, n.replace(/_/g, ' ')]} contentStyle={{ borderRadius: 12, fontSize: 12 }} />
-                <Legend formatter={v => v.replace(/_/g, ' ')} iconSize={8} />
+                <Tooltip formatter={(v, n) => [v, String(n).replace(/_/g, ' ')]} contentStyle={{ borderRadius: 12, fontSize: 12 }} />
+                {/* <Tooltip formatter={(v, n) => [v, n.replace(/_/g, ' ')]} contentStyle={{ borderRadius: 12, fontSize: 12 }} /> */}
+                <Legend formatter={v => String(v).replace(/_/g, ' ')} iconSize={8} />
+                {/* <Legend formatter={v => v.replace(/_/g, ' ')} iconSize={8} /> */}
               </PieChart>
             </ResponsiveContainer>
           )}
