@@ -1,15 +1,36 @@
 // const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 const API = process.env.NEXT_PUBLIC_API_URL || 'https://loan-recovery-api.onrender.com'
 
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  })
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(err || `HTTP ${res.status}`)
+  let res: Response
+  try {
+    res = await fetch(`${API}${path}`, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options,
+    })
+  } catch {
+    throw new Error('Network error — cannot reach server')
   }
+
+  if (!res.ok) {
+    let message = `HTTP ${res.status}`
+    try {
+      const body = await res.json()
+      // FastAPI returns { detail: "..." } or { detail: [...] }
+      if (typeof body.detail === 'string') {
+        message = body.detail
+      } else if (Array.isArray(body.detail)) {
+        message = body.detail.map((e: any) => e.msg || e.message || JSON.stringify(e)).join(', ')
+      } else if (body.message) {
+        message = body.message
+      }
+    } catch {
+      try { message = await res.text() || message } catch {}
+    }
+    throw new Error(message)
+  }
+
   return res.json()
 }
 

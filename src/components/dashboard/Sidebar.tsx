@@ -2,9 +2,10 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+
 import {
   LayoutDashboard, Users, PhoneCall, BarChart3,
-  HeadphonesIcon, Bot, X, ChevronRight
+  HeadphonesIcon, Bot, X, ChevronRight, Settings
 } from 'lucide-react'
 
 const nav = [
@@ -13,6 +14,7 @@ const nav = [
   { href: '/calls',       label: 'Calls',      icon: PhoneCall },
   { href: '/analytics',   label: 'Analytics',  icon: BarChart3 },
   { href: '/support',     label: 'Support',    icon: HeadphonesIcon },
+  { href: '/settings',    label: 'Settings',   icon: Settings },
 ]
 
 export default function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {

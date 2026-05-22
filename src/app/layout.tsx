@@ -3,6 +3,7 @@ import './globals.css'
 import { useState, useEffect } from 'react'
 import Sidebar from '@/components/dashboard/Sidebar'
 import Topbar from '@/components/dashboard/Topbar'
+import { ToastProvider } from '@/lib/toast'
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const [dark, setDark] = useState(false)
@@ -28,17 +29,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
       </head>
       <body className="bg-[var(--bg)] text-[var(--text)] min-h-screen flex">
-        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-0'}`}>
-          <Topbar
-            dark={dark}
-            onToggleTheme={toggleTheme}
-            onToggleSidebar={() => setSidebarOpen(o => !o)}
-          />
-          <main className="flex-1 p-6 animate-fade-in">
-            {children}
-          </main>
-        </div>
+        <ToastProvider>
+          <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+          <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-0'}`}>
+            <Topbar
+              dark={dark}
+              onToggleTheme={toggleTheme}
+              onToggleSidebar={() => setSidebarOpen(o => !o)}
+            />
+            <main className="flex-1 p-6 animate-fade-in">
+              {children}
+            </main>
+          </div>
+        </ToastProvider>
       </body>
     </html>
   )

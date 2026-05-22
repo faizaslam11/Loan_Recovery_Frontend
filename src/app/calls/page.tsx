@@ -2,7 +2,9 @@
 import { useEffect, useState } from 'react'
 import { getCalls, getTranscript, Call, TranscriptEntry } from '@/lib/api'
 import { formatDate, formatDuration, outcomeColor, outcomeLabel, sentimentColor, cn } from '@/lib/utils'
-import { PhoneCall, MessageSquare, X, Mic, Bot, Clock, Globe } from 'lucide-react'
+// import { PhoneCall, MessageSquare, X, Mic, Bot, Clock, Globe } from 'lucide-react'
+import { PhoneCall, MessageSquare, X, Mic, Bot, Clock, Globe, UserCheck, Play, Pause } from 'lucide-react'
+import { useToast } from '@/lib/toast'
 
 const STATUS_COLOR: Record<string, string> = {
   completed:   'text-emerald-600 bg-emerald-50 dark:text-emerald-400 dark:bg-emerald-950/40',
@@ -18,10 +20,16 @@ export default function CallsPage() {
   const [selected, setSelected] = useState<Call | null>(null)
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([])
   const [loadingTranscript, setLoadingTranscript] = useState(false)
+  // AFTER the existing useState declarations
+  const [escalating, setEscalating] = useState(false)
+  const [escalated, setEscalated] = useState<string | null>(null) // stores call id
+  const [playing, setPlaying] = useState(false)
+  const audioRef = useState<HTMLAudioElement | null>(null)
+  const { showError, showToast } = useToast()
 
-  useEffect(() => {
-    getCalls(0, 100).then(data => { setCalls(data); setLoading(false) })
-  }, [])
+  // useEffect(() => {
+  //   getCalls(0, 100).then(data => { setCalls(data); setLoading(false) })
+  // }, [])
 
   const openTranscript = async (call: Call) => {
     setSelected(call)
@@ -33,6 +41,32 @@ export default function CallsPage() {
       setLoadingTranscript(false)
     }
   }
+  const handleEndCall = async (callId: string) => {
+  try {
+    const API = process.env.NEXT_PUBLIC_API_URL || 'https://loan-recovery-api.onrender.com'
+    await fetch(`${API}/calls/${callId}/end`, { method: 'POST' })
+    showToast('Call ended', 'success')
+    getCalls(0, 100).then(data => setCalls(data))
+  } catch (e) {
+    showError(e)
+  }
+}
+  // Replace the existing useEffect
+  useEffect(() => {
+    const load = () => getCalls(0, 100).then(data => { setCalls(data); setLoading(false) })
+    load()
+
+  // Auto-refresh every 5s if any call is in progress
+    const interval = setInterval(() => {
+      setCalls(prev => {
+        const hasActive = prev.some(c => c.status === 'in_progress' || c.status === 'initiated')
+        if (hasActive) load()
+        return prev
+      })
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <div className="max-w-7xl mx-auto space-y-5">
@@ -74,9 +108,41 @@ export default function CallsPage() {
                   <td className="px-4 py-3">
                     <span className="text-xs font-mono text-slate-500 dark:text-slate-400">{c.id.slice(0, 8)}...</span>
                   </td>
-                  <td className="px-4 py-3">
+                  {/* <td className="px-4 py-3">
                     <span className={cn('badge', STATUS_COLOR[c.status] || 'text-slate-500 bg-slate-100')}>{c.status}</span>
+                  </td> */}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      {(c.status === 'in_progress' || c.status === 'initiated') && (
+                        <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-brand-500" />
+                        </span>
+                            )}
+                         <span className={cn('badge', STATUS_COLOR[c.status] || 'text-slate-500 bg-slate-100')}>
+                          {c.status}
+                        </span>
+                    </div>
                   </td>
+                  {/* <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <button
+                          onClick={() => openTranscript(c)}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/40 transition-colors"
+                        >
+                          <MessageSquare size={13} /> Transcript
+                          </button>
+                          {(c.status === 'in_progress' || c.status === 'initiated') && (
+                          <button
+                          onClick={() => handleEndCall(c.id)}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                        >
+                      <PhoneCall size={13} /> End Call
+                        </button>
+                        )}
+                      </div>
+                    </td> */}
+
                   <td className="px-4 py-3">
                     <span className={cn('badge', outcomeColor(c.outcome))}>{outcomeLabel(c.outcome)}</span>
                   </td>
@@ -101,12 +167,22 @@ export default function CallsPage() {
                     <span className="text-xs text-slate-500">{formatDate(c.initiated_at)}</span>
                   </td>
                   <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
                     <button
                       onClick={() => openTranscript(c)}
                       className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-brand-600 dark:text-brand-400 hover:bg-brand-50 dark:hover:bg-brand-950/40 transition-colors"
                     >
                       <MessageSquare size={13} /> Transcript
                     </button>
+                    {(c.status === 'in_progress' || c.status === 'initiated') && (
+                      <button
+                          onClick={() => handleEndCall(c.id)}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                      >
+                        <PhoneCall size={13} /> End Call
+                      </button>
+                      )}
+                      </div>
                   </td>
                 </tr>
               ))}
@@ -162,12 +238,94 @@ export default function CallsPage() {
               ))}
             </div>
 
-            <div className="px-6 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-4 text-xs text-slate-400">
+            {/* <div className="px-6 py-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-4 text-xs text-slate-400">
               <span>Duration: {formatDuration(selected.duration_seconds)}</span>
               <span>Language: {selected.language_used}</span>
               {selected.promise_amount && <span>Promise: ₹{selected.promise_amount.toLocaleString('en-IN')}</span>}
               {selected.escalated_to_human && <span className="text-amber-500">⚠ Escalated</span>}
-            </div>
+            </div> */}
+            {/* Footer — meta + actions */}
+<div className="px-6 py-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+  
+  {/* Meta info */}
+  <div className="flex items-center gap-4 text-xs text-slate-400 flex-wrap">
+    <span>Duration: {formatDuration(selected.duration_seconds)}</span>
+    <span>Language: {selected.language_used}</span>
+    {selected.promise_amount && (
+      <span>Promise: ₹{selected.promise_amount.toLocaleString('en-IN')}</span>
+    )}
+    {(selected.escalated_to_human || escalated === selected.id) && (
+      <span className="text-amber-500 font-medium">⚠ Escalated to human</span>
+    )}
+  </div>
+
+  {/* Recording playback */}
+  {selected.recording_url ? (
+    <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl">
+      <button
+        onClick={() => {
+          const audio = audioRef[0] || new Audio(selected.recording_url!)
+          if (!audioRef[0]) audioRef[0] = audio
+          if (playing) {
+            audio.pause()
+            setPlaying(false)
+          } else {
+            audio.play()
+            setPlaying(true)
+            audio.onended = () => setPlaying(false)
+          }
+        }}
+        className="w-8 h-8 rounded-full bg-brand-500 hover:bg-brand-600 flex items-center justify-center text-white transition-colors shrink-0"
+      >
+        {playing ? <Pause size={14} /> : <Play size={14} />}
+      </button>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium text-slate-700 dark:text-slate-300">Call Recording</p>
+        <p className="text-xs text-slate-400 truncate">{selected.recording_url}</p>
+      </div>
+    </div>
+  ) : (
+    <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl text-xs text-slate-400">
+      <Play size={13} />
+      No recording available for this call
+    </div>
+  )}
+
+  {/* Escalation button */}
+  <button
+    onClick={async () => {
+      if (escalated === selected.id || selected.escalated_to_human) return
+      setEscalating(true)
+      try {
+        const API = process.env.NEXT_PUBLIC_API_URL || 'https://loan-recovery-api.onrender.com'
+        await fetch(`${API}/calls/${selected.id}/escalate`, { method: 'POST' })
+        setEscalated(selected.id)
+      } catch {
+          showError(new Error('Escalation failed — please try again'))
+          setEscalated(selected.id) // still mark locally
+      } finally {
+        setEscalating(false)
+      }
+    }}
+    disabled={escalating || escalated === selected.id || selected.escalated_to_human}
+    className={cn(
+      'w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-medium transition-all',
+      escalated === selected.id || selected.escalated_to_human
+        ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 cursor-default'
+        : 'bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-950/50'
+    )}
+  >
+    {escalating
+      ? <div className="w-4 h-4 border-2 border-rose-400 border-t-transparent rounded-full animate-spin" />
+      : <UserCheck size={15} />
+    }
+    {escalated === selected.id || selected.escalated_to_human
+      ? '✓ Escalated to human agent'
+      : 'Escalate to human agent'
+    }
+  </button>
+
+</div>
           </div>
         </div>
       )}
