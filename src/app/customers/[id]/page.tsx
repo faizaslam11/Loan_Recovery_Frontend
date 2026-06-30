@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { getCustomer, getCalls, triggerCall, Customer, Call } from '@/lib/api'
+import { getCustomer, getCalls, triggerCallElevenlabs, Customer, Call } from '@/lib/api'
 import { formatCurrency, formatDate, riskColor, outcomeColor, outcomeLabel, cn } from '@/lib/utils'
 import { Phone, ArrowLeft, AlertTriangle, CheckCircle2, X, Bot, Mic } from 'lucide-react'
 import { getTranscript, TranscriptEntry } from '@/lib/api'
@@ -55,7 +55,7 @@ const openTranscript = async (call: Call) => {
   if (!customer) return
   setCalling(true)
   try {
-    await triggerCall(customer.id)
+    await triggerCallElevenlabs(customer.id)
     setToast('✅ Call initiated!')
   } catch (e) {
     showError(e)  // ← shows proper error toast globally

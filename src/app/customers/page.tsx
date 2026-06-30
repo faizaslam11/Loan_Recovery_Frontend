@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { getCustomers, triggerCall, deleteCustomer, Customer } from '@/lib/api'
+import { getCustomers, triggerCallElevenlabs, triggerBulkCalls, deleteCustomer, Customer } from '@/lib/api'
 import { formatCurrency, riskColor, cn } from '@/lib/utils'
 import {
   Phone, Plus, Search, Filter, Trash2, Pencil,
@@ -27,6 +27,8 @@ export default function CustomersPage() {
   const [showImport, setShowImport] = useState(false)
   const { showToast: globalToast, showError } = useToast()
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [runningCampaign, setRunningCampaign] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -50,7 +52,7 @@ export default function CustomersPage() {
   if (!c.consent_given) return showToast('Customer has not given consent', 'error')
   setCalling(c.id)
   try {
-    await triggerCall(c.id)
+    await triggerCallElevenlabs(c.id)
     showToast(`📞 Call initiated to ${c.name}`)
   } catch (e) {
     showError(e)  // ← replaces generic e.message
@@ -100,6 +102,26 @@ export default function CustomersPage() {
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{customers.length} borrowers in system</p>
         </div>
         <div className="flex items-center gap-2">
+        {selectedIds.length > 0 && (
+          <button
+            onClick={async () => {
+              setRunningCampaign(true)
+              try {
+                const result = await triggerBulkCalls(selectedIds)
+                showToast(`Campaign started: ${result.callable} calls`, 'success')
+                setSelectedIds([])
+              } catch (e) {
+                showError(e)
+              } finally {
+                setRunningCampaign(false)
+              }
+            }}
+            className="btn-primary"
+            disabled={runningCampaign}
+          >
+            {runningCampaign ? 'Starting...' : `Call ${selectedIds.length} customers`}
+          </button>
+        )}
   <button onClick={() => setShowImport(true)} className="btn-secondary flex items-center gap-2">
     <Upload size={16} /> Import CSV
   </button>
@@ -140,7 +162,7 @@ export default function CustomersPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-slate-100 dark:border-slate-800">
-                {['Customer', 'Loan Account', 'Outstanding', 'DPD', 'Risk', 'Lang', 'Last Outcome', 'Actions'].map(h => (
+                {['', 'Customer', 'Loan Account', 'Outstanding', 'DPD', 'Risk', 'Lang', 'Last Outcome', 'Actions'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                     {h}
                   </th>
@@ -160,13 +182,23 @@ export default function CustomersPage() {
                 ))
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-slate-400">
+                  <td colSpan={9} className="px-4 py-12 text-center text-slate-400">
                     <AlertCircle size={28} className="mx-auto mb-2 opacity-30" />
                     No customers found
                   </td>
                 </tr>
               ) : filtered.map(c => (
                 <tr key={c.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/30 transition-colors">
+                  <td className="px-4 py-3">
+                    <input
+                        type="checkbox"
+                        checked={selectedIds.includes(c.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedIds(prev => [...prev, c.id])
+                          else setSelectedIds(prev => prev.filter(id => id !== c.id))
+                        }}
+                      />
+                  </td>  
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-brand-50 dark:bg-brand-950/40 flex items-center justify-center text-xs font-bold text-brand-600 dark:text-brand-400">
@@ -588,7 +620,7 @@ function EditCustomerModal({ customer, onClose }: { customer: Customer; onClose:
   const handleSubmit = async () => {
     const phoneRegex = /^\+[1-9]\d{7,14}$/
     if (!phoneRegex.test(form.phone)) {
-      setError('Phone must be in international format: +919876543210')
+      setError('Phone must be in international format: +91XXXXXXXXX')
       return
     }
     setSaving(true)

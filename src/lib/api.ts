@@ -70,6 +70,19 @@ export const triggerCall = (customerId: string, language?: string) =>
     body: JSON.stringify({ customer_id: customerId, override_language: language }),
   })
 
+// src/lib/api.ts — add this function
+export const triggerCallElevenlabs = (customerId: string, language?: string) =>
+  request<{ call_id: string; status: string; mode: string }>('/calls/trigger-el', {
+    method: 'POST',
+    body: JSON.stringify({ customer_id: customerId, override_language: language }),
+  })  
+
+export const triggerBulkCalls = (customerIds: string[], maxConcurrent: number = 6) =>
+  request<{ message: string; callable: number; skipped: number }>('/calls/bulk-trigger', {
+    method: 'POST',
+    body: JSON.stringify({ customer_ids: customerIds, max_concurrent: maxConcurrent }),
+  })  
+
 // ── Types ──────────────────────────────────────────────────────────────────
 export interface DashboardData {
   customers: { total: number; high_risk: number; critical: number }
@@ -113,6 +126,7 @@ export interface Call {
   initiated_at?: string
   completed_at?: string
   created_at: string
+  summary?: string
 }
 
 export interface TranscriptEntry {
